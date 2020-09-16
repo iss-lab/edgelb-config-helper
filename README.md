@@ -10,6 +10,8 @@ go build -o edgelb-config-helper ./cmd/edgelb-config-helper/...
 
 ```
 export EDGELB_HOST="<EDGELB-API-SERVER>"
+export DNS_HOST="example.com"
+export DIRECT_HOST="example-1.com"
 ./edgelb-config-helper
 ```
 
