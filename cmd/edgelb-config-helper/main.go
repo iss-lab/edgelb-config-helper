@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
@@ -13,34 +15,65 @@ import (
 	"github.com/iss-lab/edgelb-config-helper/models"
 )
 
+func check(e error) {
+	if e != nil {
+		log.Fatal(e)
+	}
+}
+
 func main() {
 	dnsHost := os.Getenv("DNS_HOST")
 	publicHost := os.Getenv("PUBLIC_HOST")
-	transport := httptransport.New(os.Getenv("EDGELB_HOST"), "", []string{"http"})
+
+	// edgelbHost := os.Getenv("EDGELB_HOST")
+	// config, err := fetchConfig(edgelbHost)
+
+	poolFile := os.Getenv("POOL_FILE")
+	config := readConfig(poolFile)
+
+	poolToLinks(config, dnsHost, publicHost)
+}
+
+func readConfig(poolFile string) *models.V2Pool {
+	dat, err := ioutil.ReadFile(poolFile)
+	check(err)
+
+	pool := &models.V2Pool{}
+	err = pool.UnmarshalBinary(dat)
+	check(err)
+
+	return pool
+}
+
+func fetchConfig(edgelbHost, poolName string) *models.V2Pool {
+	transport := httptransport.New(edgelbHost, "", []string{"http"})
 	client := apiclient.New(transport, strfmt.Default)
-	// pingResp, err := client.Operations.Ping(operations.NewPingParamsWithTimeout(60 * time.Second))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Printf("%#v\n", pingResp.Payload)
+
+	pingResp, err := client.Operations.Ping(operations.NewPingParamsWithTimeout(60 * time.Second))
+	check(err)
+	fmt.Printf("%#v\n", pingResp.Payload)
 
 	configResp, err := client.Operations.GetConfigContainer(operations.NewGetConfigContainerParams())
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
+
 	config := configResp.Payload
-
-	fmt.Println("pools:")
-
 	for _, pool := range config.Pools {
-		fmt.Printf("  - %s:\n", pool.Name)
-		fmt.Printf("    links:\n")
-		for _, frontend := range pool.V2.Haproxy.Frontends {
-			for _, link := range frontend.LinkBackend.Map {
-				fmt.Printf("      - %s -> %s\n", displayLink(publicHost, dnsHost, frontend.BindPort, link), link.Backend)
-			}
-			fmt.Printf("      - %s -> %s\n", displayHost(publicHost, dnsHost, frontend.BindPort, nil), frontend.LinkBackend.DefaultBackend)
+		if pool.Name == poolName {
+			return pool.V2
 		}
+	}
+
+	log.Fatal(fmt.Sprintf("Could not find pool named: '%s'", poolName))
+	return nil
+}
+
+func poolToLinks(pool *models.V2Pool, dnsHost, publicHost string) {
+	fmt.Printf("    links:\n")
+	for _, frontend := range pool.Haproxy.Frontends {
+		for _, link := range frontend.LinkBackend.Map {
+			fmt.Printf("      - %s -> %s\n", displayLink(publicHost, dnsHost, frontend.BindPort, link), link.Backend)
+		}
+		fmt.Printf("      - %s -> %s\n", displayHost(publicHost, dnsHost, frontend.BindPort, nil), frontend.LinkBackend.DefaultBackend)
 	}
 }
 
