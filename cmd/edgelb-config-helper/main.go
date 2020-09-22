@@ -117,6 +117,13 @@ func displayLink(publicHost, dnsHost string, port *int32, link *models.V2Fronten
 	return fmt.Sprintf("%s%s", host, path)
 }
 
+// ---
+// vhosts:
+// 	- postgresql-admin
+// 		marathon: /data/postgresql-admin
+// 		portName: postgresql-admin
+// 	-
+
 // TODO: Support "simple" vhost yaml syntax + mustache template for rest of pool json config
 // TODO: Support pulling straight from API server as well as from static json file
 // TODO: Support dcos cli based connection to api server via https and dcos authentication

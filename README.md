@@ -11,7 +11,8 @@ go build -o edgelb-config-helper ./cmd/edgelb-config-helper/...
 ```
 export EDGELB_HOST="<EDGELB-API-SERVER>"
 export DNS_HOST="example.com"
-export DIRECT_HOST="example-1.com"
+export PUBLIC_HOST="example-1.com"
+export POOL_FILE="/path/to/pool.json"
 ./edgelb-config-helper
 ```
 
